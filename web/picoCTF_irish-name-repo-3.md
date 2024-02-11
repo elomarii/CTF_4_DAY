@@ -9,9 +9,11 @@ There is a secure website running at `https://jupiter.challenges.picoctf.org/pro
 ## Resolution
 This is an improved version of the previous "Irish-name-repo" challenges, so we know that the website is vulnerable to an SQL injection.
 When we navigate to the login page we find a password text field.
+
 ![image](https://github.com/elomarii/ctf4day/assets/106914699/78ff3451-b440-42a0-99cc-1b06f04587b7)
 
 We can try some inputs to see how the app will behave. When we inspect the POST request that carries the data, we find that two pieces of information are sent to the server.
+
 ![image](https://github.com/elomarii/ctf4day/assets/106914699/4ac792d9-0604-486f-b98a-9430e1bd61c3)
 
 The `debug` value may expose how the server handles the request, thus, we provide a different value and see what will happen.
