@@ -1,9 +1,9 @@
 # Cyborg
-A box involving encrypted archives, source code analysis and more.
+A box involving encrypted archives, source code analysis, and more.
 
-We are given the IP address of the machine which will be refered to as $IP in the following.
+### Resolution
 
-Lets start our `nmap` scan:
+We are given the IP address of the machine which will be referred to as $IP in the following `nmap` scan:
 ```
 $ sudo nmap -sV -sC $IP
                          
@@ -24,7 +24,9 @@ Service Info: OS: Linux; CPE: cpe:/o:linux:linux_kernel
 ```
 
 The machine runs a web server. We navigate to the hosted website and find out that it contains the default Apache page set up after initialization.
->> insert image
+
+![771159b35c97e429247aac754ad44bf06cc1efa8](https://github.com/elomarii/ctf4day/assets/106914699/b04e3548-89f0-4adc-a732-1e13475c0e24)
+
 
 We can enumerate for other content hosted by the machine.
 ```
@@ -55,17 +57,16 @@ etc                     [Status: 301, Size: 310, Words: 20, Lines: 10, Duration:
 
 ```
 
-We were able to find two directories. Whene navigating to the admin portal, we find a downloadable Borg backup of the website called.
-The archive is encrypted and needs a passphrase for decrypion.
+We were able to find two directories. When navigating to the admin portal, we find a downloadable Borg backup of the website called.
+The archive is encrypted and needs a passphrase for decryption.
 
 Let's check the etc directory. This contains a configuration file of a Squid proxy and a passwd file.
-The passwd file contains a hash of the `music_archive` user.
+The passwd file contains a hash of the `music_archive` user's password.
 ```
 music_archive:$apr1$BpZ.Q.1m$F0qqPwHSOG50URuOVQTTn.
 ```
 
 We successfully crack the password using `hashcat` and the `rockyou` wordlist. The password is `squidward`.
-
 ```
 $ hashcat -m 1600 -a 0 hash /usr/share/wordlists/rockyou.txt 
 
@@ -117,7 +118,7 @@ $ tree
 
 ```
 
-The content of secrete was a bit disappointing XD
+The content of the secrete was a bit disappointing XD
 ```
 shoutout to all the people who have gotten to this stage whoop whoop!"
 ```
@@ -130,9 +131,9 @@ alex:S3cretP@s3
 
 Since the above are Alex credentials, we can try connecting via ssh.
 
-In the home directory we find the user flag: `flag{1_hop3_y0u_ke3p_th3_arch1v3s_saf3}`
+In the home directory, we find the user flag: `flag{1_hop3_y0u_ke3p_th3_arch1v3s_saf3}`
 
-Left is the root flag. Making use of the given hint "There might be an interesting file running as root" and checking our Alex permissions, we find that the script `backup.sh` can be ran as a root.
+Left is the root flag. Making use of the given hint "There might be an interesting file running as root" and checking our Alex permissions, we find that the script `backup.sh` can be run as a root.
 ```
 $ sudo -l
 
