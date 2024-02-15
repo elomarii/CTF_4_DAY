@@ -153,6 +153,12 @@ In addition to the passphrase, `stegseek` outputs the embedded file too, in this
 Now that we have access to James credentials, we can connect to the machine via ssh.\
 Once there, first thing we find is the user flag. Then, another alien picture `Alien_autospy.jpg`.
 
+For those who have no idea about the context, me included, the hint is important. In short, I refer you to the Foxnews article intitled "Filmmaker reveals how he faked infamous 'Roswell alien autopsy' footage in a London apartment".
+
+### 4. Privilege escalation
+
+TBC
+
 
 
 
