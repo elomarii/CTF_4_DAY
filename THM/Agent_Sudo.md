@@ -157,6 +157,12 @@ For those who have no idea about the context, me included, the hint is important
 
 ### 4. Privilege escalation
 
+```
+$ uname -a
+
+Linux agent-sudo 4.15.0-55-generic #60-Ubuntu SMP Tue Jul 2 18:22:20 UTC 2019 x86_64 x86_64 x86_64 GNU/Linux
+```
+
 TBC
 
 
