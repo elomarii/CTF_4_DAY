@@ -23,7 +23,7 @@ PORT   STATE SERVICE VERSION
 Service Info: OSs: Unix, Linux; CPE: cpe:/o:linux:linux_kernel
 ```
 
-Iteresting, we have a web server, an FTP server, and an SSH agent.\
+Interesting, we have a web server, an FTP server, and an SSH agent.\
 Navigating to the web page, we get the following message
 > Dear agents,
 >
@@ -32,7 +32,7 @@ Navigating to the web page, we get the following message
 > From,\
 > Agent R
 
-The message mentions the `User-Agent` http header. There should be a perticular codename that will give us access to more pages in the web app.
+The message mentions the `User-Agent` http header. There should be a particular codename that will give us access to more pages in the web app.
 Back to the hint in the room description, `C` is the actual user-agent that should be used. We can use many tools to edit the user-agent header; a browser plugin, burpsuite, curl, ...
 
 Once the request made, we get redirected to `/agent_C_attention.php`:
@@ -81,7 +81,7 @@ ftp> ls
 226 Directory send OK.
 ```
 
-First intersting file should be the message to agent J:
+The first interesting file should be the message to agent J:
 
 > Dear agent J,
 >
@@ -90,7 +90,7 @@ First intersting file should be the message to agent J:
 > From,\
 > Agent C
 
-The password of J is somewhere in on of the pictures. This technique is called steganography. We can use `binwalk` to extract (`-e`) embded files and executable code:
+The password of J is somewhere in on of the pictures. This technique is called steganography. We can use `binwalk` to extract (`-e`) embedded files and executable code:
 
 ```
 $ binwalk cutie.png   
@@ -113,7 +113,7 @@ $ john zip.hash
 ```
 
 After some time we get the password `alien`. Note that `john` used a default wordlist and that we can specify our own wordlist using `-wordlist:FILE`.
-Inside the arhive, we find the following file `To_agentR.txt`:
+Inside the archive, we find the following file `To_agentR.txt`:
 
 > Agent C,
 >
@@ -122,7 +122,7 @@ Inside the arhive, we find the following file `To_agentR.txt`:
 > By,\
 > Agent R
 
-Nothing interresting but let's keep the info for the moment.\
+Nothing interesting but let's keep the info for the moment.\
 Next, a steg(steganography) password is demanded. There are many tools to do so, again, by brute force. `stegseek` is one of them.
 ```
 $ stegseek cutie.png /usr/share/wordlists/fasttrack.txt 
@@ -150,25 +150,52 @@ In addition to the passphrase, `stegseek` outputs the embedded file too, in this
 
 ### 3. Capture the user flag
 
-Now that we have access to James credentials, we can connect to the machine via ssh.\
+Now that we have access to James' credentials, we can connect to the machine via ssh.\
 Once there, first thing we find is the user flag. Then, another alien picture `Alien_autospy.jpg`.
 
-For those who have no idea about the context, me included, the hint is important. In short, I refer you to the Foxnews article intitled "Filmmaker reveals how he faked infamous 'Roswell alien autopsy' footage in a London apartment".
+For those who have no idea about the context, me included, the hint is important. In short, I refer you to the Fox News article entitled "Filmmaker reveals how he faked infamous 'Roswell alien autopsy' footage in a London apartment".
 
 ### 4. Privilege escalation
 
+We upload our `linPEAS.sh` script to the machine to enumerate privilege escalation vulnerabilities.
 ```
-$ uname -a
+$ scp linPEAS.sh james@10.10.130.231:~/
 
-Linux agent-sudo 4.15.0-55-generic #60-Ubuntu SMP Tue Jul 2 18:22:20 UTC 2019 x86_64 x86_64 x86_64 GNU/Linux
+james@10.10.130.231's password: 
+linPEAS.sh                                    100%  833KB 802.5KB/s   00:01
+```
+Now enumeration
+```
+james@agent-sudo:~$ chmod +x linPEAS.sh 
+james@agent-sudo:~$ ./linPEAS.sh
+
+<...snip...>
+
+╔══════════╣ Sudo version
+╚ https://book.hacktricks.xyz/linux-hardening/privilege-escalation#sudo-version
+Sudo version 1.8.21p2
+
+<...snip...>
 ```
 
-TBC
+While scrolling through the output of the script, we notice that the sudo version is marked in red, so we do a little research to find out that a CVE was reported for that specific version. Check out CVE-2019-14287.
 
+We take the Python script of the exploit from ExploitDB and run it on the target machine. Hit, got root access.
 
+Now we get our root flag in `/root/root.txt`
 
+> To Mr.hacker,
+>
+> Congratulation on rooting this box. This box was designed for TryHackMe. Tips, always update your machine. 
+>
+> Your flag is 
+> b53a02f55b57d4439e3341834d70c062
+>
+> By,\
+> DesKel a.k.a Agent R
 
-
+Mission successful,\
+Agent Sudo.
 
 
 
