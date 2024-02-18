@@ -13,6 +13,7 @@ import sys
 import base64
 import struct
 from gmpy2 import isqrt
+from Crypto.PublicKey import RSA
 
 """
 The article in the reference [1] is very helpful in understanding the format of the file.
@@ -53,47 +54,19 @@ phi_n = (p-1) * (q-1)
 d = pow(e, -1, phi_n)
 
 """
-Having all the relevant RSA variables, we need to create the OpenSSH private key file
-to be able to ssh to the machine. Considering the private key file format below, we can
-adapt the code from the mentioned article to generate id_rsa.
-
-RSAPrivateKey ::= SEQUENCE {
-    version           Version,
-    modulus           INTEGER,  -- n
-    publicExponent    INTEGER,  -- e
-    privateExponent   INTEGER,  -- d
-    prime1            INTEGER,  -- p
-    prime2            INTEGER,  -- q
-    exponent1         INTEGER,  -- d mod (p-1)
-    exponent2         INTEGER,  -- d mod (q-1)
-    coefficient       INTEGER,  -- (inverse of q) mod p
-    otherPrimeInfos   OtherPrimeInfos OPTIONAL
-}
+I was trying at first to encode the private key file's content myself based on its format. But found that this can be done
+in Python without all the burden. See the documentation [2].
+Note: PEM is the right encoding format. At least other formats were rejected in ssh connection.
 """
-from pyasn1.type import univ
-from pyasn1.codec.der import encoder as der_encoder
-
-pkcs1_seq = univ.Sequence()
-pkcs1_seq.setComponentByPosition(0, univ.Integer(n))
-pkcs1_seq.setComponentByPosition(1, univ.Integer(e))
-pkcs1_seq.setComponentByPosition(1, univ.Integer(d))
-pkcs1_seq.setComponentByPosition(1, univ.Integer(p))
-pkcs1_seq.setComponentByPosition(1, univ.Integer(q))
-pkcs1_seq.setComponentByPosition(1, univ.Integer(d % (p-1)))
-pkcs1_seq.setComponentByPosition(1, univ.Integer(d % (q-1)))
-pkcs1_seq.setComponentByPosition(1, univ.Integer(pow(q, -1, p)))
-
-print('-----BEGIN OPENSSH PRIVATE KEY-----')
-content = base64.b64encode(der_encoder.encode(pkcs1_seq)).decode()
-# content = "\n".join(content[i: min(i+70, len(content))] for i in range(0, len(content), 70))
-# print(content)
-print('-----END OPENSSH PRIVATE KEY-----')
+private_key = RSA.construct((n, e, d))
+content = private_key.exportKey(format='PEM', passphrase=None, pkcs=1)
+with open("id_rsa", "wb") as file: file.write(content)
 
 ```
 
-We execute the above script in the same directory as the public RSA key redirecting the output to the private key file:
+We execute the above script in the same directory as the public RSA key:
 ```
-$ ./script.py > id_rsa
+$ ./script.py
 ```
 
 Now, we ssh to the machine using that private key:
@@ -101,6 +74,11 @@ Now, we ssh to the machine using that private key:
 $ ssh -i id_rsa root@ip_machine
 ```
 
+The flag is in the home directory.
+
+
 ### Ref
 \[1\] [Converting OpenSSH public keys](https://blog.oddbit.com/post/2011-05-08-converting-openssh-public-keys/)
+
+\[2\] [RSA construct docs](https://www.dlitz.net/software/pycrypto/api/current/Crypto.PublicKey.RSA-module.html#construct)
 
