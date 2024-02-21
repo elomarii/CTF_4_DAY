@@ -1,4 +1,4 @@
-# TOMCAT
+# TOMGHOST
 Identify recent vulnerabilities to try exploit the system or read files that you should not have access to.
 
 ## Resolution
@@ -379,3 +379,17 @@ Getting resource at ajp13://10.10.210.249:8009/asdf
 
 </web-app>
 ```
+
+Investigating the result, we find a username and a potentially hashed password. Actually, I spend quite a time looking for what kind of hash was that, but I just tried it itself as a password and it worked out connecting to ssh.
+
+In the machine, there exist two users under the home direcotry. The user *merlin* has the `user.txt` flag and we can read it without any further permissions.
+
+In the home dictory of *skyf_ck*, there is two interesting files: `tryhackme.asc` and `credential.pgp`
+
+
+
+
+
+
+
+
