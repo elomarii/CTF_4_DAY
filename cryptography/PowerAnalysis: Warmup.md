@@ -1,20 +1,20 @@
 ## The problem
 
 ### Description
-This encryption algorithm leaks a "bit" of data every time it does a computation. Use this to figure out the encryption key. Download the encryption program here encrypt.py. Access the running server with nc saturn.picoctf.net 65415. The flag will be of the format picoCTF{<encryption key>} where <encryption key> is 32 lowercase hex characters comprising the 16-byte encryption key being used by the program.
+This encryption algorithm leaks a "bit" of data every time it does a computation. Use this to figure out the encryption key. Download the encryption program here <encrypt.py>. Access the running server with nc saturn.picoctf.net <port>. The flag will be of the format picoCTF{<encryption_key>} where <encryption_key> is 32 lowercase hex characters comprising the 16-byte encryption key being used by the program.
 
 ### Hints
 1. The "encryption" algorithm is simple and the correlation between the leakage and the key can be very easily modeled.
 
 ## Resolution
-To encrypt a string `B = b1b2b3...b16` using the key `K = k1k2k3...k16`, each byte is xored with the corresponding one, the result `C = B xor K = c1c2c3...c16` is used as a set of indexes, each one maps to an element of `Sbox`, the number of elements that have 1 as the least significant bit is returned.
+To encrypt a string `B = b1b2b3...b16` using the key `K = k1k2k3...k16`, each plaintext byte is xored with the corresponding key byte, the result `C = B xor K = c1c2c3...c16` is used as a set of indexes, each one map to an element of `Sbox`, the number of elements that have 1 as the least significant bit is returned.
 
 Now we denote by `Sbox1` (respectively `Sbox0`) the list of indices of elements of `Sbox` whose least significant bit is 1 (respectively 0).\
 
-If `Sbox[ci]` has a 0 then necessarily `ki xor bi` is in the set `Sbox0`. 
+For a given *i*, if `Sbox[ci]` has a 0 then necessarily `ki xor bi` is in the set `Sbox0`. 
 
 How is this helpful in figuring out K?
-If we fix all the bytes of B but one (let it be *bi*), and iterate over all possibilities of that byte, we'll be able to tell for which values of *bi* the encryption *ci* led to an index from which set of indices. For each iteration we'll end up with a set of accesptable values of *ki*, and by the end, their intersection sould lead to a unique index pointing to the element of `Sbox` that is exactly *ki*.
+If we fix all the bytes of B but one (let it be *bi*) and iterate over all possibilities of that byte, we'll be able to tell for which values of *bi* the encryption *ci* led to an index from which set of indices. For each iteration, we'll end up with a set of acceptable values of *ki*, and by the end, their intersection should lead to a unique index pointing to the element of `Sbox` that is exactly *ki*.
 
 Our script:
 ```Python
@@ -53,25 +53,35 @@ def api_call(plain):
 key = []
 
 for i in range(16):
-    print(f'key byte {i}',)
+    # fixing bytes we don't care about so that they don't influence the leakage
     right = "00" * i
     left = "00" * (16 - i - 1)
-    results = []
+
+    # leaks returned by the server, maxl and minl are used to determine which plaintext
+    # values are related to which array (Sbox0 or Sbox1)
+    # note that maxl - minl = 1
+    leaks = []
+    maxl = 0
+    minl = 0
+
+    acceptable_keys = set(Sbox)
+
     for byte in range(256):
         plain = right + ("0" if (byte <= 15) else "") + hex(byte)[2:] + left
-        results.append(api_call(plain))
+        leak = api_call(plain)
 
-    maxr = max(results)
-    key_set = set(Sbox)
-    for b in range(256):
-        if results[b] == maxr:
-            key_set = key_set & set([i ^ b for i in Sbox1])
+        # we start processing once we know the difference between values leaking 1s
+        # and values leaking 0s
+        if maxl == minl:
+            leaks.append(api_call(plain))
+            maxl = max(leaks)
+            minl = min(leaks)
         else:
-            key_set = key_set & set([i ^ b for i in Sbox0])
+            if leak == maxl: acceptable_keys = acceptable_keys & set([i ^ byte for i in Sbox1])
+            else: acceptable_keys = acceptable_keys & set([i ^ byte for i in Sbox0])
+            if len(acceptable_keys) == 1: break
 
-        if len(key_set) == 1: break
-
-    key.append(hex(key_set.pop()))
+    key.append(hex(acceptable_keys.pop()))
 
 print(key)
 
