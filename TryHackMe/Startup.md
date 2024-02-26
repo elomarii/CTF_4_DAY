@@ -1,5 +1,13 @@
+# Startup
+Abuse traditional vulnerabilities via untraditional means.
 
+---
 
+We are Spice Hut, a new startup company that just made it big! We offer a variety of spices and club sandwiches (in case you get hungry), but that is not why you are here. To be truthful, we aren't sure if our developers know what they are doing and our security concerns are rising. We ask that you perform a thorough penetration test and try to own root. Good luck!
+
+---
+
+## Resolution
 
 Nmap scan
 ```
@@ -115,8 +123,40 @@ local: shell.php remote: shell.php
 732 bytes sent in 00:00 (8.78 KiB/s)
 ```
 
-Now we have access to the machine.
+You can use whatever php file to get a reverse shell back to your machine.
+Now that we have access to the machine, we find the recipe in the root directory:
+```
 
+www-data@startup:/$ cat recipe.txt
+
+Someone asked what our main ingredient to our spice soup is today. I figured I can't keep it a secret forever and told him it was <flag>.
+```
+
+Navigating to the home directory, we found the home folder of the user *lennie* but we don't have permissions to access it.
+Back to the root folder, we notice a suspicious folder `incidents` containing a suspicious `pcap` file:
+```
+www-data@startup:/incidents$ ls -l
+
+total 32
+-rwxr-xr-x 1 www-data www-data 31224 Nov 12  2020 suspicious.pcapng
+```
+
+To get this file, we can copy it to the location of our ftp server and then download it on our local machine.
+```
+www-data@startup:/$ cp /incidents/suspicious.pcapng /var/www/html/files/ftp/
+```
+![image](https://github.com/elomarii/CTF_4_DAY/assets/106914699/ec9272e5-6970-440f-b838-88c0d1db05d8)
+
+
+Opening the capture in Wireshark and looking at the statistics, we notice that the before last communication is the one that produces the majority of the traffic.
+We apply the IP addresses as filters and then we follow the TCP stream to see what has been exchanged in the communication.
+
+![image](https://github.com/elomarii/CTF_4_DAY/assets/106914699/a9ed5665-1058-4c64-aac2-fd3c151b4659)
+
+![image](https://github.com/elomarii/CTF_4_DAY/assets/106914699/b6ac0d9e-6c73-4e73-a9d7-94bccb69b2ff)
+
+The capture catches a connection of a user *vagrant* using a reverse shell the same way we did to get access to the machine. *vagrant* tried to access *lennie*'s home directory unsuccessfuly and then tried to list files that can be run as root without need of a password.
+What's interesting is the password *vagrant* used in the process: `c4ntg3t3n0ughsp1c3`. This can be a password of someone else. Luckily this is the password of *lennie*.
 
 
 
