@@ -9,11 +9,12 @@ We are Spice Hut, a new startup company that just made it big! We offer a variet
 
 ## Resolution
 
-Nmap scan
+Let's start with a version and script scan against the target machine
 ```
-sudo nmap -sV -sC 10.10.30.21 -Pn -n
+$ sudo nmap -sV -sC <machine_ip> -Pn -n
+
 Starting Nmap 7.80 ( https://nmap.org ) at 2024-02-26 22:53 CET
-Nmap scan report for 10.10.30.21
+Nmap scan report for <machine_ip>
 Host is up (0.038s latency).
 Not shown: 997 closed ports
 PORT   STATE SERVICE VERSION
@@ -25,7 +26,7 @@ PORT   STATE SERVICE VERSION
 | ftp-syst: 
 |   STAT: 
 | FTP server status:
-|      Connected to 10.9.196.149
+|      Connected to <machine_ip>
 |      Logged in as ftp
 |      TYPE: ASCII
 |      No session bandwidth limit
@@ -46,12 +47,13 @@ PORT   STATE SERVICE VERSION
 Service Info: OSs: Unix, Linux; CPE: cpe:/o:linux:linux_kernel
 ```
 
-Able to connect anonymously to the ftp server:
+The default `nmap` scripts were able to connect anonymously to the FTP server.
+We can connect and `get` the files there.
 ```
-ftp 10.10.30.21
-Connected to 10.10.30.21.
+$ ftp anonymous@<machine_ip>
+
+Connected to <machine_ip>.
 220 (vsFTPd 3.0.3)
-Name (10.10.30.21:elomarii): anonymous
 331 Please specify the password.
 Password: 
 230 Login successful.
@@ -68,41 +70,24 @@ drwxrwxrwx    2 65534    65534        4096 Nov 12  2020 ftp
 
 Content of notice.txt
 ```
-cat notice.txt 
+$ cat notice.txt
+ 
 Whoever is leaving these damn Among Us memes in this share, it IS NOT FUNNY. People downloading documents from our website will think we are a joke! Now I dont know who it is, but Maya is looking pretty sus.
 ```
-The meme we're talking about `important.jpg`
+
+The meme they're talking about is `important.jpg`:
 ![important](https://github.com/elomarii/CTF_4_DAY/assets/106914699/9b8c7cb6-ff1b-491c-98d3-14e77a032c67)
 
 Web app fuzzing:
 ```
-ffuf -w ~/Downloads/common.txt:FUZZ -u http://10.10.30.21/FUZZ 
+$ ffuf -w ~/Downloads/common.txt:FUZZ -u http://<machine_ip>/FUZZ 
 
-        /'___\  /'___\           /'___\       
-       /\ \__/ /\ \__/  __  __  /\ \__/       
-       \ \ ,__\\ \ ,__\/\ \/\ \ \ \ ,__\      
-        \ \ \_/ \ \ \_/\ \ \_\ \ \ \ \_/      
-         \ \_\   \ \_\  \ \____/  \ \_\       
-          \/_/    \/_/   \/___/    \/_/       
-
-       v1.1.0
-________________________________________________
-
- :: Method           : GET
- :: URL              : http://10.10.30.21/FUZZ
- :: Wordlist         : FUZZ: /home/elomarii/Downloads/common.txt
- :: Follow redirects : false
- :: Calibration      : false
- :: Timeout          : 10
- :: Threads          : 40
- :: Matcher          : Response status: 200,204,301,302,307,401,403
-________________________________________________
-
+<...snip...>
 files                   [Status: 301, Size: 310, Words: 20, Lines: 10]
 ```
 
-The `/files` allows us to access the files of the ftp server.
-We can upload our shell to the server and then include it from the web app to achieve RCE.
+The `/files` path allows us to access the files on the FTP server.
+This means that we can upload our shell to the server and then include it from the web app to achieve RCE.
 Note that uploading the file to the main directory will not succeed. This is possible, however, in the `ftp` folder.
 
 ```
@@ -123,40 +108,38 @@ local: shell.php remote: shell.php
 732 bytes sent in 00:00 (8.78 KiB/s)
 ```
 
-You can use whatever php file to get a reverse shell back to your machine.
+You can use whatever php script you like to get a reverse shell back to your machine.\
 Now that we have access to the machine, we find the recipe in the root directory:
 ```
-
 www-data@startup:/$ cat recipe.txt
 
 Someone asked what our main ingredient to our spice soup is today. I figured I can't keep it a secret forever and told him it was <flag>.
 ```
 
-Navigating to the home directory, we found the home folder of the user *lennie* but we don't have permissions to access it.
+Navigating to the home directory, we found the home folder of the user *lennie* but we don't have permission to access it.
 Back to the root folder, we notice a suspicious folder `incidents` containing a suspicious `pcap` file:
 ```
 www-data@startup:/incidents$ ls -l
 
-total 32
 -rwxr-xr-x 1 www-data www-data 31224 Nov 12  2020 suspicious.pcapng
 ```
 
-To get this file, we can copy it to the location of our ftp server and then download it on our local machine.
+To get this file, we can copy it to the location of our FTP server and then download it on our local machine.
 ```
 www-data@startup:/$ cp /incidents/suspicious.pcapng /var/www/html/files/ftp/
 ```
 ![image](https://github.com/elomarii/CTF_4_DAY/assets/106914699/ec9272e5-6970-440f-b838-88c0d1db05d8)
 
 
-Opening the capture in Wireshark and looking at the statistics, we notice that the before last communication is the one that produces the majority of the traffic.
+Opening the capture in Wireshark and looking at the statistics, we notice that the before-last communication is the one that produces most of the traffic.
 We apply the IP addresses as filters and then we follow the TCP stream to see what has been exchanged in the communication.
 
 ![image](https://github.com/elomarii/CTF_4_DAY/assets/106914699/a9ed5665-1058-4c64-aac2-fd3c151b4659)
 
 ![image](https://github.com/elomarii/CTF_4_DAY/assets/106914699/b6ac0d9e-6c73-4e73-a9d7-94bccb69b2ff)
 
-The capture catches a connection of a user *vagrant* using a reverse shell the same way we did to get access to the machine. *vagrant* tried to access *lennie*'s home directory unsuccessfuly and then tried to list files that can be run as root without need of a password.
-What's interesting is the password *vagrant* used in the process: `c4ntg3t3n0ughsp1c3`. This can be a password of someone else. Luckily this is the password of *lennie*.
+The capture catches a connection of a user *vagrant* using a reverse shell the same way we did to get access to the machine. *vagrant* tried to access *lennie*'s home directory unsuccessfully and then tried to list files that can be run as root without the need for a password.
+What's interesting is the password *vagrant* used in the process: `c4ntg3t3n0ughsp1c3`. This can be the password of someone else. Luckily this is the password of *lennie*.
 
 
 
