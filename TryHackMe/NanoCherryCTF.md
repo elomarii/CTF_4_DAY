@@ -109,7 +109,54 @@ happens to you, we'll all be sure to keep your dream of erasing vim off of all s
 {: file='DONTLOOKCHAD.txt'}
 
 ## Second segment
-...
+
+Now back to the main website `cherryontop.thm` for further enumeration. We find a page
+`content.php` showing some facts about ice cream.
+
+```
+$ ffuf -w /usr/share/seclists/Discovery/Web-Content/directory-list-2.3-small.txt:FUZZ -u "http://cherryontop.thm/FUZZ" -e .php
+
+...SNIP...
+index.php               [Status: 200, Size: 13968, Words: 5633, Lines: 297, Duration: 24ms]
+images                  [Status: 301, Size: 319, Words: 20, Lines: 10, Duration: 27ms]
+content.php             [Status: 200, Size: 2462, Words: 754, Lines: 63, Duration: 101ms]
+...SNIP...
+```
+
+![image](https://github.com/elomarii/CTF_4_DAY/assets/106914699/04ffad62-eec7-426d-aae2-68d14dec2640)
+
+Taking a closer look on the url when we make a request, the user field seems not having any
+impact on the response we get back, strange. What if there are some facts where the user
+field will be of importance ? Let's fuzz different values of the facts parameter :
+
+```
+$ ffuf -w /usr/share/seclists/Discovery/Web-Content/common.txt:FUZZ -u "http://cherryontop.thm/content.php?facts=FUZZ" -fw 754
+
+...SNIP...
+03                      [Status: 200, Size: 2514, Words: 762, Lines: 63, Duration: 21ms]
+01                      [Status: 200, Size: 2499, Words: 759, Lines: 63, Duration: 21ms]
+02                      [Status: 200, Size: 2519, Words: 762, Lines: 63, Duration: 22ms]
+04                      [Status: 200, Size: 2523, Words: 761, Lines: 63, Duration: 20ms]
+1                       [Status: 200, Size: 2499, Words: 759, Lines: 63, Duration: 19ms]
+2                       [Status: 200, Size: 2519, Words: 762, Lines: 63, Duration: 21ms]
+20                      [Status: 200, Size: 2479, Words: 755, Lines: 63, Duration: 21ms]
+3                       [Status: 200, Size: 2514, Words: 762, Lines: 63, Duration: 20ms]
+4                       [Status: 200, Size: 2523, Words: 761, Lines: 63, Duration: 26ms]
+50                      [Status: 200, Size: 2487, Words: 757, Lines: 63, Duration: 20ms]
+64                      [Status: 200, Size: 2486, Words: 757, Lines: 63, Duration: 23ms]
+lost+found              [Status: 200, Size: 2472, Words: 755, Lines: 63, Duration: 24ms]
+```
+
+Trying getting fact 64, we receive the following
+![image](https://github.com/elomarii/CTF_4_DAY/assets/106914699/3500e3d7-8e5e-4b48-b4cf-7f2c5d83fff5)
+
+This means that not all users can access all facts. Now is the turne to find an appropriate
+value for the user parameter. The default value is `I52WK43U`, which is `Guest` in base32 encoding.
+> You can use DenCode for quick identification of an encoding schema
+{: .prompt-tip}
+
+
+
 
 
 ## Third segment
